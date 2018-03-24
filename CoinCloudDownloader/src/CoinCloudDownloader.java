@@ -270,13 +270,13 @@ public class CoinCloudDownloader extends JFrame {
 		List<String> out = new ArrayList<String>();
 		URLConnection c;
 		if(useTor) {
-			URL blockchanINFO = new URL("https", BLOCKCHAIN_HostTor, "/rawtx/" + transaction);
+			URL blockchainINFO = new URL("https", BLOCKCHAIN_HostTor, "/rawtx/" + transaction);
 			log("Connect to: " + "https://" + BLOCKCHAIN_HostTor + "/rawtx/" + transaction + ".", INFO);
-			c = blockchanINFO.openConnection(TORProxy);
+			c = blockchainINFO.openConnection(TORProxy);
 		}else {
-			URL blockchanINFO = new URL("https", BLOCKCHAIN_Host, "/rawtx/" + transaction);
+			URL blockchainINFO = new URL("https", BLOCKCHAIN_Host, "/rawtx/" + transaction);
 			log("Connect to: " + "https://" + BLOCKCHAIN_Host + "/rawtx/" + transaction + ".", INFO);
-			c = blockchanINFO.openConnection();
+			c = blockchainINFO.openConnection();
 		}
 		c.connect();
 		InputStream i = c.getInputStream();
