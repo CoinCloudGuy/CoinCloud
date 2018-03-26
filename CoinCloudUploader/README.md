@@ -1,4 +1,4 @@
-#C oinCloud Uploader
+# CoinCloud Uploader
 ## What?
 This is an program that lets you upload files to the Bitcoin-blockchain.
 ## Install.
