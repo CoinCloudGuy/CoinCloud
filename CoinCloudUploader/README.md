@@ -1,9 +1,9 @@
-#CoinCloud Uploader
-##What?
+#C oinCloud Uploader
+## What?
 This is an program that lets you upload files to the Bitcoin-blockchain.
-##Install.
+## Install.
 Go into the `Releases`-folder, than choose the folder with version that you want to download (`Newest Version` will always contain the most up-to-date version) and download the runnable jar-file named `CoinCloudUploader {version} {state}(runnable).jar`. Once The download is complete, you only need to install the java `jre 8` (or higher).
-##How to use?
+## How to use?
 Once you start the CoinCloud Uploader you'll see 4 fields.
 
 In the first field, you have to enter the path to the file you want to upload. You can type the path manually or choose an path via the `Choose`-button.
@@ -28,14 +28,14 @@ If you are using an wallet, that is not electrum: Inform yourself on how to pay 
 **Note:** Depending on the type of content you are uploading it can be advisable to set an Tor proxy in your wallet, since the send action will use **your IP** to publish the transaction and anyone in the Bitcoin-netowrk will see that IP.
 
 Once your wallet confirms your transaction you have successfully uploaded the file into the Bitcoin-blockchain and can download the file at any time with the id of your transaction using the CoinCloudDownloader.
-##Why is there an image in each release?
+## Why is there an image in each release?
 This image has an zip-archive embedded into it, containing the source-code and the runnable jar file of the version. This makes it easier to distribute the program through image boards and the such, just upload the image like any other normal image.
 It is possible that the image gets cleaned in the upload process, so don't expect this to work everywhere! Just check the file size of the original and the uploaded one, if they differ, the image has been cleaned.
 
 To open the zip-archive: Download the image and change it's file extension from `.jpg` to `.zip` and then open it with winrar or similar programs.
 
 You can create these images on Linux with the command `cat {imageName}.jpg {zipName}.zip > {newImageZipName}.jpg`
-##How does this work?
+## How does this work?
 The uploaded file is essentially hidden in the output scripts of an transaction.
 
 This is achieved by cutting the input file into many 20 byte pieces (the last piece will be padded with null bytes), than converting the pieces into Pay-to-Public-Key-Hash (or P2PKH for short) addresses, that get stored along with the amount of Satoshi, that will be sent to each generated address, into an .csv file.
