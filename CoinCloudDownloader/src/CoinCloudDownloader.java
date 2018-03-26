@@ -51,10 +51,10 @@ public class CoinCloudDownloader extends JFrame {
 	public static final int WARNING = 2;
 	public static final Color ERRORColor = new Color(255, 0, 0);
 	public static final Color INFOColor = new Color(0, 0, 0);
-	public static final Color WARNINGColor = new Color(255, 255, 0);
+	public static final Color WARNINGColor = new Color(155, 155, 0);
 	public static final Color POINTYColor = new Color(0, 255, 0);
-	public static final String version = "0.0.3-Beta";
-	public static final String name = "CoinCloud";
+	public static final String version = "0.0.4-Beta";
+	public static final String name = "CoinCloudDownloader";
 	
 	public static final String BLOCKCHAIN_Host = "blockchain.info";
 	public static final String BLOCKCHAIN_HostTor = "blockchainbdgpzk.onion";
@@ -128,6 +128,8 @@ public class CoinCloudDownloader extends JFrame {
 				JFileChooser fc = new JFileChooser();
 				fc.showOpenDialog(btnChoose);
 				File f = fc.getSelectedFile();
+				if(f==null)
+					return;
 				if(f.isDirectory()) {
 					log("The selected file is directory and not an file, choose an file!", ERROR);
 					return;
@@ -220,7 +222,7 @@ public class CoinCloudDownloader extends JFrame {
 							fos.write(out);
 							fos.close();
 						} catch (IOException e1) {
-							log("An exception while writing to the file maybe not enough file permissions?", ERROR);
+							log("An exception while writing to the file, maybe not enough file permissions?", ERROR);
 							synchronized (isBuisy) {isBuisy = new Boolean(false);}
 							return;
 						}
@@ -259,7 +261,7 @@ public class CoinCloudDownloader extends JFrame {
 		panel_1.add(btnLookhere, BorderLayout.SOUTH);
 	}
 
-	public static  void putToBytes(String s, List<Byte> l) {
+	public static void putToBytes(String s, List<Byte> l) {
 		for(int i = 0;i< s.length()/2;i++) {
 			int b = (Integer.parseInt(s.substring(2*i, (2*i)+2),16) & 0xff);
 			l.add((byte)b);
