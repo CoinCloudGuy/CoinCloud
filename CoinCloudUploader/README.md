@@ -1,4 +1,6 @@
 # CoinCloud Uploader
+## News
+Version `0.0.1` Beta is currently broken. Do not use the Uploader yet, you will loose money! Wait for version `0.0.2` Beta!
 ## What?
 This is an program that lets you upload files to the Bitcoin-blockchain.
 ## Install.
