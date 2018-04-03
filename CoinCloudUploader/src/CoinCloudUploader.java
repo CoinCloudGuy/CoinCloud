@@ -54,6 +54,7 @@ import java.util.List;
 import java.util.Objects;
 import java.util.concurrent.ExecutionException;
 
+import javax.swing.Box;
 import javax.swing.BoxLayout;
 import javax.swing.ButtonGroup;
 import javax.swing.JButton;
@@ -70,6 +71,7 @@ import javax.swing.JTextField;
 import javax.swing.JTextPane;
 import javax.swing.SwingConstants;
 import javax.swing.SwingWorker;
+import javax.swing.border.Border;
 import javax.swing.border.EmptyBorder;
 import javax.swing.border.LineBorder;
 import javax.swing.text.AttributeSet;
@@ -84,12 +86,12 @@ import javax.swing.text.StyleContext;
  * 
  */
 public class CoinCloudUploader extends JFrame {
-	private static final long serialVersionUID = -3015288968267047980L;
+	private static final long serialVersionUID = 4443304742443698016L;
 	
 	//general constants
 	public static final int MAX_ARRAY_LENGTH = Integer.MAX_VALUE-2;//also last (valid) array index
 	//program constants
-	public static final String version = "0.0.2-Alpha";
+	public static final String version = "0.0.3-Alpha";
 	public static final String name = "CoinCloudUploader";
 	public static final int ERROR = 0;
 	public static final int INFO = 1;
@@ -99,6 +101,18 @@ public class CoinCloudUploader extends JFrame {
 	public static final Color WARNINGColor = new Color(155, 155, 0);
 	public static final Color POINTYColor = new Color(0, 255, 0);
 	//UI constants
+	public static final int SPACE_BETWEEN_STAGES = 5;//in pixels
+	public static final Color StageBorderColor = new Color(205, 205, 205);
+	public static final Color StageBackgroundColor = new Color(220, 220, 220);
+	public static final Color CurrentStageBorderColor = new Color(190, 190, 190);
+	public static final Color CurrentStageBackgroundColor = new Color(247, 247, 247);
+
+	public static final Color FieldBorderColor = new Color(0, 0, 0);
+	public static final Color FieldBackgroundColor = new Color(255, 255, 255);
+	
+	public static final Color DFieldBorderColor = new Color(180, 180, 180);
+	public static final Color DFieldBackgroundColor = new Color(200, 200, 200);
+	//data constants
 	public static final String PRICE_PER_ADDRESS_default = "546";//in satoshi per address
 	public static final int PRICE_PER_ADDRESS_default_value = 546;//in satoshi per address
 	public static final String TRANSACTION_FEE_default = "1185";//in Satoshi per kB
@@ -123,13 +137,15 @@ public class CoinCloudUploader extends JFrame {
 	//visible components
 	private JSplitPane contentPane;
 	private JTextField field_InputFilePath;
-	private JTextPane dfield_AddressToPayTo;
-	private JTextPane dfield_CalculatedAmountToPay;
+	private JTextField dfield_AddressToPayTo;
+	private JTextField dfield_CalculatedAmountToPay;
 	private JTextField field_TransactionFee;
 	private JTextField field_PricePerAddress;
 	private JTextPane infoBox;
 	private JCheckBox chckbxUseTorCheck;
 	private JCheckBox chckbxUseTorBroadcast;
+	//UI related
+	private JPanel currentStage;
 	//internal data
 	private byte[] fileContents;
 	
@@ -153,7 +169,7 @@ public class CoinCloudUploader extends JFrame {
 	private JRadioButton rdbtnBits;
 	private JRadioButton rdbtnSatoshi;
 	
-	public static void main(String[] args) {
+	public static void main(String[] args) throws InvalidKeyException, NoSuchAlgorithmException, SignatureException {
 		EventQueue.invokeLater(new Runnable() {
 			public void run() {
 				try {
@@ -184,172 +200,195 @@ public class CoinCloudUploader extends JFrame {
 		
 		JPanel actionsContainer = new JPanel();
 		contentPane.setLeftComponent(actionsContainer);
-		actionsContainer.setLayout(new BorderLayout(0, 0));
+		actionsContainer.setLayout(new BoxLayout(actionsContainer, BoxLayout.PAGE_AXIS));
 		
-		FileInputContainer = new JPanel();
-		actionsContainer.add(FileInputContainer, BorderLayout.NORTH);
+		FileInputContainer = getStageContainer();
 		FileInputContainer.setLayout(new BorderLayout(0, 0));
 		
 			JLabel lblInputfile = new JLabel("Input file:");
 			FileInputContainer.add(lblInputfile, BorderLayout.NORTH);
 			
-			field_InputFilePath = new JTextField();
+			field_InputFilePath = getField("");
 			FileInputContainer.add(field_InputFilePath, BorderLayout.CENTER);
-			field_InputFilePath.setColumns(10);
 			
-			JButton btnChooseInput = new JButton("Choose");
+			JButton btnChooseInput = getButton("Choose");
 			btnChooseInput.addActionListener(_getChooseButtonActionListener());
 			FileInputContainer.add(btnChooseInput, BorderLayout.EAST);
 			
-			JButton btnNext_ChooseInput = new JButton("Next");
+			JButton btnNext_ChooseInput = getButton("Next");
 			btnNext_ChooseInput.addActionListener(_getBtnNext_ChooseInputActionListener());
 			FileInputContainer.add(btnNext_ChooseInput, BorderLayout.SOUTH);
 		
-		JPanel relay01 = new JPanel();
-		actionsContainer.add(relay01, BorderLayout.SOUTH);
-		relay01.setLayout(new BorderLayout(0, 0));
+		actionsContainer.add(FileInputContainer);	
 		
-			BTCPaymentContainer = new JPanel();
-			relay01.add(BTCPaymentContainer, BorderLayout.NORTH);
-			BTCPaymentContainer.setLayout(new BorderLayout(0, 0));
+		Component verticalGlue_Stage1To2 = Box.createVerticalGlue();
+		verticalGlue_Stage1To2.setPreferredSize(new Dimension(0, SPACE_BETWEEN_STAGES));
+		actionsContainer.add(verticalGlue_Stage1To2);
 		
-				JLabel label = new JLabel("Amount of satoshi per generated address:");
-				BTCPaymentContainer.add(label, BorderLayout.NORTH);
+		BTCPaymentContainer = getStageContainer();
+		BTCPaymentContainer.setLayout(new BorderLayout(0, 0));
+	
+			JLabel label = new JLabel("Amount of satoshi per generated address:");
+			BTCPaymentContainer.add(label, BorderLayout.NORTH);
+			
+			field_PricePerAddress = getField(PRICE_PER_ADDRESS_default);
+			BTCPaymentContainer.add(field_PricePerAddress, BorderLayout.CENTER);
+			
+			JButton btnDefault_PricePerAddress = getButton("Default");
+			btnDefault_PricePerAddress.addActionListener(_getBtnDefault_PricePerAddressActionListener());
+			BTCPaymentContainer.add(btnDefault_PricePerAddress, BorderLayout.EAST);
+			
+			JPanel BTCPaymentContainerRelay01 = new JPanel();
+			BTCPaymentContainerRelay01.setOpaque(false);
+			BTCPaymentContainer.add(BTCPaymentContainerRelay01, BorderLayout.SOUTH);
+			BTCPaymentContainerRelay01.setLayout(new BorderLayout(0, 0));
+	
+				JLabel lblAmountSatoshiPer = new JLabel("Amount of satoshi per kB transaction size:");
+				BTCPaymentContainerRelay01.add(lblAmountSatoshiPer, BorderLayout.NORTH);
 				
-				field_PricePerAddress = new JTextField(PRICE_PER_ADDRESS_default);
-				field_PricePerAddress.setColumns(10);
-				BTCPaymentContainer.add(field_PricePerAddress, BorderLayout.CENTER);
+				field_TransactionFee = getField(TRANSACTION_FEE_default);
+				BTCPaymentContainerRelay01.add(field_TransactionFee, BorderLayout.CENTER);
+				field_TransactionFee.setColumns(10);
 				
-				JButton btnDefault_PricePerAddress = new JButton("Default");
-				btnDefault_PricePerAddress.addActionListener(_getBtnDefault_PricePerAddressActionListener());
-				BTCPaymentContainer.add(btnDefault_PricePerAddress, BorderLayout.EAST);
+				JButton btnDefault_TransactionFee = getButton("Default");
+				btnDefault_TransactionFee.addActionListener(_getBtnDefault_TransactionFeeActionListener());
+				BTCPaymentContainerRelay01.add(btnDefault_TransactionFee, BorderLayout.EAST);
 				
-				JPanel BTCPaymentContainerRelay01 = new JPanel();
-				BTCPaymentContainer.add(BTCPaymentContainerRelay01, BorderLayout.SOUTH);
-				BTCPaymentContainerRelay01.setLayout(new BorderLayout(0, 0));
+				JButton btnNext_Payment = getButton("Next");
+				btnNext_Payment.addActionListener(_getBtnNext_PaymentActionListener());
+				BTCPaymentContainerRelay01.add(btnNext_Payment, BorderLayout.SOUTH);
+				
 		
-					JLabel lblAmountSatoshiPer = new JLabel("Amount of satoshi per kB transaction size:");
-					BTCPaymentContainerRelay01.add(lblAmountSatoshiPer, BorderLayout.NORTH);
+		actionsContainer.add(BTCPaymentContainer);
+
+		Component verticalGlue_Stage2To3 = Box.createVerticalGlue();
+		verticalGlue_Stage2To3.setPreferredSize(new Dimension(0, SPACE_BETWEEN_STAGES));
+		actionsContainer.add(verticalGlue_Stage2To3);
+		
+		BTCAddressContainer = getStageContainer();
+		BTCAddressContainer.setLayout(new BorderLayout(0, 0));
+
+			JPanel BTCAddressContainerRelay01 = new JPanel();
+			BTCAddressContainerRelay01.setOpaque(false);
+			BTCAddressContainer.add(BTCAddressContainerRelay01, BorderLayout.NORTH);
+			BTCAddressContainerRelay01.setLayout(new BorderLayout(0, 0));
+
+				JLabel lblAmountToPay = new JLabel("Amount to pay:");
+				BTCAddressContainerRelay01.add(lblAmountToPay, BorderLayout.NORTH);
+				
+				dfield_CalculatedAmountToPay = getDField("");
+				BTCAddressContainerRelay01.add(dfield_CalculatedAmountToPay, BorderLayout.CENTER);
+				
+				JPanel BTCUnitContainer = new JPanel();
+				BTCUnitContainer.setOpaque(false);
+				BTCAddressContainerRelay01.add(BTCUnitContainer, BorderLayout.SOUTH);
+				
 					
-					field_TransactionFee = new JTextField(TRANSACTION_FEE_default);
-					BTCPaymentContainerRelay01.add(field_TransactionFee, BorderLayout.CENTER);
-					field_TransactionFee.setColumns(10);
+					BTCUnits = new ButtonGroup();
 					
-					JButton btnDefault_TransactionFee = new JButton("Default");
-					btnDefault_TransactionFee.addActionListener(_getBtnDefault_TransactionFeeActionListener());
-					BTCPaymentContainerRelay01.add(btnDefault_TransactionFee, BorderLayout.EAST);
+					JLabel lblShowPriceIn = new JLabel("Show price in: ");
+					BTCUnitContainer.add(lblShowPriceIn);
 					
-					JButton btnNext_Payment = new JButton("Next");
-					btnNext_Payment.addActionListener(_getBtnNext_PaymentActionListener());
-					BTCPaymentContainerRelay01.add(btnNext_Payment, BorderLayout.SOUTH);
+					rdbtnBtc = new JRadioButton("BTC");
+					rdbtnBtc.setOpaque(false);
+					rdbtnBtc.setSelected(true);
+					rdbtnBtc.addItemListener(_getItemListener());
+					BTCUnits.add(rdbtnBtc);
+					BTCUnitContainer.add(rdbtnBtc);
+					
+					rdbtnMbtc = new JRadioButton("mBTC");
+					rdbtnMbtc.setOpaque(false);
+					rdbtnMbtc.addItemListener(_getItemListener());
+					BTCUnits.add(rdbtnMbtc);
+					BTCUnitContainer.add(rdbtnMbtc);
+					
+					rdbtnBits = new JRadioButton("Bits");
+					rdbtnBits.setOpaque(false);
+					rdbtnBits.addItemListener(_getItemListener());
+					BTCUnits.add(rdbtnBits);
+					BTCUnitContainer.add(rdbtnBits);
+					
+					rdbtnSatoshi = new JRadioButton("Satoshi");
+					rdbtnSatoshi.setOpaque(false);
+					rdbtnSatoshi.addItemListener(_getItemListener());
+					BTCUnits.add(rdbtnSatoshi);
+					BTCUnitContainer.add(rdbtnSatoshi);
+
+			JPanel BTCAddressContainerRelay02 = new JPanel();
+			BTCAddressContainerRelay02.setOpaque(false);
+			BTCAddressContainer.add(BTCAddressContainerRelay02, BorderLayout.CENTER);
+			BTCAddressContainerRelay02.setLayout(new BorderLayout(0, 0));
+
+				JLabel lblAddress = new JLabel("Address");
+				BTCAddressContainerRelay02.add(lblAddress, BorderLayout.NORTH);
+				
+				dfield_AddressToPayTo = getDField("");
+				BTCAddressContainerRelay02.add(dfield_AddressToPayTo, BorderLayout.CENTER);
+				
+				JButton btnBTCAddress_ViewDetais = getButton("More...");
+				btnBTCAddress_ViewDetais.addActionListener(_getBtnBTCAddress_ViewDetaisActionListener());
+				BTCAddressContainerRelay02.add(btnBTCAddress_ViewDetais, BorderLayout.EAST);
+				
+				chckbxUseTorCheck = new JCheckBox("Use Tor to check balance"); 
+				chckbxUseTorCheck.setOpaque(false);
+				chckbxUseTorCheck.setSelected(BLOCKCHAIN_Network==MAINNET);
+				chckbxUseTorCheck.setEnabled(BLOCKCHAIN_Network==MAINNET);
+				BTCAddressContainerRelay02.add(chckbxUseTorCheck, BorderLayout.SOUTH);
+
+			JButton btnNext_BTCAddress = getButton("Next");
+			btnNext_BTCAddress.addActionListener(_getBtnNext_BTCAddressActionListener());
+			BTCAddressContainer.add(btnNext_BTCAddress, BorderLayout.SOUTH);
 		
-			JPanel relay02 = new JPanel();
-			relay01.add(relay02, BorderLayout.CENTER);
-			relay02.setLayout(new BorderLayout(0, 0));
+		actionsContainer.add(BTCAddressContainer);
 		
-				BTCAddressContainer = new JPanel();
-				relay02.add(BTCAddressContainer, BorderLayout.NORTH);
-				BTCAddressContainer.setLayout(new BorderLayout(0, 0));
+		Component verticalGlue_Stage3To4 = Box.createVerticalGlue();
+		verticalGlue_Stage3To4.setPreferredSize(new Dimension(0, SPACE_BETWEEN_STAGES));
+		actionsContainer.add(verticalGlue_Stage3To4);
 		
-					JPanel BTCAddressContainerRelay01 = new JPanel();
-					BTCAddressContainer.add(BTCAddressContainerRelay01, BorderLayout.NORTH);
-					BTCAddressContainerRelay01.setLayout(new BorderLayout(0, 0));
+		CraftContainer = getStageContainer();
+		CraftContainer.setLayout(new BorderLayout(0, 0));
+
+			JButton btnCraftTransaction = getButton("Craft transaction");
+			btnCraftTransaction.addActionListener(_getBtnCraftTransactionActionListener());
+			CraftContainer.add(btnCraftTransaction, BorderLayout.NORTH);
+			
+			Component strutCraftContainer = Box.createVerticalStrut(10);
+			CraftContainer.add(strutCraftContainer, BorderLayout.CENTER);
+			
+			JButton btnNext_CraftTransaction = getButton("Next");
+			btnNext_CraftTransaction.addActionListener(_getBtnNext_CraftTransactionActionListener());
+			CraftContainer.add(btnNext_CraftTransaction, BorderLayout.SOUTH);
+
+		actionsContainer.add(CraftContainer);
+
+		Component verticalGlue_Stage4To5 = Box.createVerticalGlue();
+		verticalGlue_Stage4To5.setPreferredSize(new Dimension(0, SPACE_BETWEEN_STAGES));
+		actionsContainer.add(verticalGlue_Stage4To5);
 		
-						JLabel lblAmountToPay = new JLabel("Amount to pay:");
-						BTCAddressContainerRelay01.add(lblAmountToPay, BorderLayout.NORTH);
-						
-						dfield_CalculatedAmountToPay = getDField("");
-						BTCAddressContainerRelay01.add(dfield_CalculatedAmountToPay, BorderLayout.CENTER);
-						
-						JPanel BTCUnitContainer = new JPanel();
-						BTCAddressContainerRelay01.add(BTCUnitContainer, BorderLayout.SOUTH);
-						
-							
-							BTCUnits = new ButtonGroup();
-							
-							JLabel lblShowPriceIn = new JLabel("Show price in: ");
-							BTCUnitContainer.add(lblShowPriceIn);
-							
-							rdbtnBtc = new JRadioButton("BTC");
-							rdbtnBtc.setSelected(true);
-							rdbtnBtc.addItemListener(_getItemListener());
-							BTCUnits.add(rdbtnBtc);
-							BTCUnitContainer.add(rdbtnBtc);
-							
-							rdbtnMbtc = new JRadioButton("mBTC");
-							rdbtnMbtc.addItemListener(_getItemListener());
-							BTCUnits.add(rdbtnMbtc);
-							BTCUnitContainer.add(rdbtnMbtc);
-							
-							rdbtnBits = new JRadioButton("Bits");
-							rdbtnBits.addItemListener(_getItemListener());
-							BTCUnits.add(rdbtnBits);
-							BTCUnitContainer.add(rdbtnBits);
-							
-							rdbtnSatoshi = new JRadioButton("Satoshi");
-							rdbtnSatoshi.addItemListener(_getItemListener());
-							BTCUnits.add(rdbtnSatoshi);
-							BTCUnitContainer.add(rdbtnSatoshi);
+		BroadcastContainer = getStageContainer();
+		BroadcastContainer.setLayout(new BorderLayout(0, 0));
+
+			chckbxUseTorBroadcast = new JCheckBox("Use Tor"); 
+			chckbxUseTorBroadcast.setOpaque(false);
+			chckbxUseTorBroadcast.setSelected(BLOCKCHAIN_Network==MAINNET);
+			chckbxUseTorBroadcast.setEnabled(BLOCKCHAIN_Network==MAINNET);
+			BroadcastContainer.add(chckbxUseTorBroadcast, BorderLayout.EAST);
+			
+			JButton btnBroadcastTransaction = getButton("Broadcast");
+			btnBroadcastTransaction.addActionListener(_getBtnBroadcastTransactionActionListener());
+			BroadcastContainer.add(btnBroadcastTransaction, BorderLayout.CENTER);
+			
+		actionsContainer.add(BroadcastContainer);
 		
-					JPanel BTCAddressContainerRelay02 = new JPanel();
-					BTCAddressContainer.add(BTCAddressContainerRelay02, BorderLayout.CENTER);
-					BTCAddressContainerRelay02.setLayout(new BorderLayout(0, 0));
-		
-						JLabel lblAddress = new JLabel("Address");
-						BTCAddressContainerRelay02.add(lblAddress, BorderLayout.NORTH);
-						
-						dfield_AddressToPayTo = getDField("");
-						BTCAddressContainerRelay02.add(dfield_AddressToPayTo, BorderLayout.CENTER);
-						
-						JButton btnBTCAddress_ViewDetais = new JButton("More...");
-						btnBTCAddress_ViewDetais.addActionListener(_getBtnBTCAddress_ViewDetaisActionListener());
-						BTCAddressContainerRelay02.add(btnBTCAddress_ViewDetais, BorderLayout.EAST);
-						
-						chckbxUseTorCheck = new JCheckBox("Use Tor to check balance"); 
-						chckbxUseTorCheck.setSelected(BLOCKCHAIN_Network==MAINNET);
-						BTCAddressContainerRelay02.add(chckbxUseTorCheck, BorderLayout.SOUTH);
-		
-					JButton btnNext_BTCAddress = new JButton("Next");
-					btnNext_BTCAddress.addActionListener(_getBtnNext_BTCAddressActionListener());
-					BTCAddressContainer.add(btnNext_BTCAddress, BorderLayout.SOUTH);
-		
-				JPanel relay03 = new JPanel();
-				relay02.add(relay03, BorderLayout.CENTER);
-				relay03.setLayout(new BorderLayout(0, 0));
-		
-					CraftContainer = new JPanel();
-					relay03.add(CraftContainer, BorderLayout.NORTH);
-					CraftContainer.setLayout(new BorderLayout(0, 0));
-		
-						JButton btnCraftTransaction = new JButton("Craft transaction");
-						btnCraftTransaction.addActionListener(_getBtnCraftTransactionActionListener());
-						CraftContainer.add(btnCraftTransaction, BorderLayout.NORTH);
-						
-						JButton btnNext_CraftTransaction = new JButton("Next");
-						btnNext_CraftTransaction.addActionListener(_getBtnNext_CraftTransactionActionListener());
-						CraftContainer.add(btnNext_CraftTransaction, BorderLayout.SOUTH);
-		
-					JPanel relay04 = new JPanel();
-					relay03.add(relay04, BorderLayout.CENTER);
-					relay04.setLayout(new BorderLayout(0, 0));
-		
-						BroadcastContainer = new JPanel();
-						relay04.add(BroadcastContainer, BorderLayout.NORTH);
-						BroadcastContainer.setLayout(new BorderLayout(0, 0));
-		
-							chckbxUseTorBroadcast = new JCheckBox("Use Tor"); 
-							chckbxUseTorBroadcast.setSelected(BLOCKCHAIN_Network==MAINNET);
-							BroadcastContainer.add(chckbxUseTorBroadcast, BorderLayout.EAST);
-							
-							JButton btnBroadcastTransaction = new JButton("Broadcast");
-							btnBroadcastTransaction.addActionListener(_getBtnBroadcastTransactionActionListener());
-							BroadcastContainer.add(btnBroadcastTransaction, BorderLayout.CENTER);
+		JPanel infoBoxContainer = new JPanel();
+		infoBoxContainer.setLayout(new BorderLayout());
+		contentPane.setRightComponent(infoBoxContainer);
 		
 		JScrollPane scrollPane = new JScrollPane();
 		scrollPane.setVerticalScrollBarPolicy(JScrollPane.VERTICAL_SCROLLBAR_ALWAYS);
 		scrollPane.setPreferredSize(new Dimension(300, 2));
 		scrollPane.setMinimumSize(new Dimension(300, 23));
-		contentPane.setRightComponent(scrollPane);
+		infoBoxContainer.add(scrollPane, BorderLayout.CENTER);
 		
 			JLabel lblNewLabel = new JLabel("Information");
 			lblNewLabel.setHorizontalAlignment(SwingConstants.CENTER);
@@ -357,26 +396,37 @@ public class CoinCloudUploader extends JFrame {
 			
 			infoBox = new JTextPane();
 			_appendToLog(">", POINTYColor);
-			infoBox.setFocusable(false);
 			infoBox.setBorder(new LineBorder(new Color(192, 192, 192), 2, true));
 			infoBox.setEditable(false);
 			scrollPane.setViewportView(infoBox);
 		
-			//set dimension
+		JButton btnClearInfoBox = getButton("Clear");
+		btnClearInfoBox.addActionListener(new ActionListener() {
+			@Override
+			public void actionPerformed(ActionEvent e) {
+				clearlog();
+			}
+		});
+		infoBoxContainer.add(btnClearInfoBox, BorderLayout.SOUTH);
+		
+		//set dimension
 		pack();
+		//enable the glue functionality
+		//new Dimension(, MAX_VALUE) will make sure that the glue will always try to be as large as possible.
+		verticalGlue_Stage1To2.setPreferredSize(new Dimension(1, Short.MAX_VALUE));
+		verticalGlue_Stage2To3.setPreferredSize(new Dimension(1, Short.MAX_VALUE));
+		verticalGlue_Stage3To4.setPreferredSize(new Dimension(1, Short.MAX_VALUE));
+		verticalGlue_Stage4To5.setPreferredSize(new Dimension(1, Short.MAX_VALUE));
 		//set position
 		Dimension winDim = getWindowDimension();
-		setBounds(
+		setLocation(
 				(winDim.width-getWidth())/2, //center x
-				(winDim.height-getHeight())/2, //center y
-				getWidth(),//set by pack()
-				getHeight());//set by pack()
-		setMinimumSize(new Dimension(getWidth(), getHeight()));
-		//disable later options
-		setBTCPaymentContainerEnabled(false);
-		setBTCAddressContainerEnabled(false);
-		setCraftContainerEnabled(false);
-		setBroadcastContainerEnabled(false);
+				(winDim.height-getHeight())/2); //center y
+		setMinimumSize(getContentPane().getSize());
+		
+		//disable later stages
+		this.currentStage = FileInputContainer;
+		setStageTo(FileInputContainer);
 	}
 //----------------------------------------------------------------------------------------------------------------------------------------
 
@@ -437,9 +487,7 @@ public class CoinCloudUploader extends JFrame {
 					return;
 				}
 				//file is in memory, move on to next stage
-				setInputContainerEnabled(false);
-				setBTCPaymentContainerEnabled(true);
-				BTCPaymentContainer.requestFocus();
+				setStageTo(BTCPaymentContainer);
 			}
 		};
 	}
@@ -482,7 +530,7 @@ public class CoinCloudUploader extends JFrame {
 				//create one-time use Bitcoin address.
 				ECKeyPair pair = generateKeyPair();
 				if(pair == null) {
-					log("Your operating system does not provide the \"SHA1PRNG\" random number generator or the \"secp256k1\" elliptic curve. This is required in order to create bitcoin addresses. You will (probably) never be able to fix this, sorry.", ERROR);
+					log("Your operating system does not provide the \"SHA1PRNG\" random number generator or the \"secp256k1\" elliptic curve. Both are required in order to create bitcoin addresses. You will (probably) never be able to fix this, sorry.", ERROR);
 					storedSatoshiPerAddress = -1;//reset to invalid
 					storedTransactionFee = -1;//reset to invalid
 					calculatedEstamatedCost = -1;//reset to invalid
@@ -492,9 +540,7 @@ public class CoinCloudUploader extends JFrame {
 				addressPrivateKey = pair.prk;
 				dfield_CalculatedAmountToPay.setText(convertSatoshiToBTC(calculatedEstamatedCost)+"");
 				dfield_AddressToPayTo.setText(createBitcoinAddress(addressPublicKey, BLOCKCHAIN_Network));
-				setBTCPaymentContainerEnabled(false);
-				setBTCAddressContainerEnabled(true);
-				BTCAddressContainer.requestFocus();
+				setStageTo(BTCAddressContainer);
 			}
 		};
 	}
@@ -568,9 +614,7 @@ public class CoinCloudUploader extends JFrame {
 								}
 								sumOfAllSatoshiToSpent = sumOfBTC;
 								unspendOutputs = results;
-								setBTCAddressContainerEnabled(false);//next button would be disabled here anyway so no need to enable it here
-								setCraftContainerEnabled(true);
-								CraftContainer.requestFocus();
+								setStageTo(CraftContainer);//next button would be disabled here anyway so no need to enable it here
 								return;
 							}else {
 								log("The is not enough money to pay for the transaction to be accepted.(needed: " + calculatedExactCost + " Satoshi, available: " + sumOfBTC + ").", ERROR);
@@ -612,9 +656,7 @@ public class CoinCloudUploader extends JFrame {
 					log("The final check, on whether or not the money on the would be enough for the transaction, has shown, that the current amount of " + sumOfAllSatoshiToSpent + " Satoshi is not enough to pay for the transaction(final price: " + realCost + " Satoshi).", ERROR);
 					return;
 				}
-				setCraftContainerEnabled(false);
-				setBroadcastContainerEnabled(true);
-				BroadcastContainer.requestFocus();
+				setStageTo(BroadcastContainer);
 			}
 		};
 	}
@@ -652,7 +694,6 @@ public class CoinCloudUploader extends JFrame {
 								log("The transaction ID is: " + transactionID, INFO);
 								log("You can check whether or not the transactions is confirmed here: https://" + BLOCKCHAIN_Host + "/tx/" + transactionID, INFO);
 								log("Restart the program to start over.", INFO);
-								((JButton)e.getSource()).setEnabled(true);
 								return;
 							}else {
 								log("The transaction could not be successfully broadcasted.", ERROR);
@@ -705,7 +746,7 @@ public class CoinCloudUploader extends JFrame {
 				
 				
 				//create all input scripts
-				//input script structure:script = OPpush 71 bytes + [signature] + OPpush 33 bytes + [compressed public key]
+				//input script structure:script = OPpush ~71 bytes + [signature] + OPpush 33 bytes + [compressed public key]
 				
 				// 21 in hex is 33 (OPpush 33 bytes)
 				byte[] inputScriptPostfix = appendBytes(new byte[][] {convertToBytes("21"), getRawCompressedPublicKey(addressPublicKey)});
@@ -721,14 +762,12 @@ public class CoinCloudUploader extends JFrame {
 					byte[] combined = appendBytes(new byte[][] {preInput, inputsBefore, unspendOutput[0], unspendOutput[1],    modifiedInscriptlength,   unspendOutput[2]   ,sequence   , inputsAfter,      postInput, hashTypeCode});
 					byte[] signature;
 					try {
-						System.out.println("Combined: " + convertToHex(combined));
 						signature = getSignature(combined, addressPrivateKey);
 					} catch (InvalidKeyException | NoSuchAlgorithmException | SignatureException e1) {
 						e1.printStackTrace();
 						log("There was an error signing the transaction. It seems that your operating system does not provide ECDSA signature algorithms, this is a problem, that you can't do anything about. Sorry!", ERROR);
 						return;//abort anything
 					}
-					System.out.println("signature length: " + signature.length);
 					signature = appendBytes(new byte[][] {signature, new byte[] {hashTypeCode[0]}});
 					inputscripts.add(appendBytes(new byte[][] {convertToBytes(getVarIntFromLong(signature.length)), signature, inputScriptPostfix}));
 					i++;
@@ -771,11 +810,43 @@ public class CoinCloudUploader extends JFrame {
 		}
 		return out;
 	}
+	public static final BigInteger ECCURVE_N = new BigInteger("FFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFEBAAEDCE6AF48A03BBFD25E8CD0364141", 16);
 	private static byte[] getSignature(byte[] toSign, ECPrivateKey priv) throws NoSuchAlgorithmException, SignatureException, InvalidKeyException {
 		Signature sig = Signature.getInstance("SHA256withECDSA");
 		sig.initSign(priv);
 		sig.update(sha256(toSign));
-		return sig.sign();
+		byte[] signature = sig.sign();
+		//see if s-value is greater than N/2 and if so set s to N-s. This is done to fix "Non-canonical signature: S value is unnecessarily high"
+		//get s bytes
+		boolean passedR = false;
+		byte[] sValue = null;
+		int firstSIndex = 0;
+		for (int i = 0; i < signature.length; i++) {
+			if(signature[i]==(byte)0x02) {
+				System.out.println("i: " + i);
+				if(passedR) {
+					byte lengthS = signature[i+1];
+					sValue = new byte[lengthS];
+					firstSIndex = i+2;
+					for (int j = 0; j < lengthS; j++)
+						sValue[j] = signature[j+(i+2)];//(i+2)starting index of s-value
+					break;
+				}else {
+					byte lengthR = signature[i+1];
+					i=(i+1)+lengthR;//(i+1)=index of length byte, (i+1)+lengthR= last index of r-value 
+					passedR = true;
+				}
+			}
+		}
+		BigInteger biOfS = new BigInteger(sValue);
+		if(biOfS.compareTo(ECCURVE_N.divide(BigInteger.valueOf(2))) > 0) {
+			sValue = ECCURVE_N.subtract(biOfS).toByteArray();
+			byte[] out = appendBytes(new byte[][] {Arrays.copyOfRange(signature, 0, firstSIndex-1),new byte[] {(byte)sValue.length},sValue});
+			out[1] = (byte)(out.length-2);//[1] is the total length of the signature except for the 0x30 prefix and the length itself(so the amount of bytes following the value of it), since s could have changed in size the total length could have been changed as well.
+			return out;
+		}else {
+			return signature;
+		}
 	}
 	
 	private ItemListener _getItemListener() {
@@ -882,9 +953,9 @@ public class CoinCloudUploader extends JFrame {
 			contentPanel.add(addressPanel);
 				JLabel lblBtcAddress = new JLabel("BTC Address: ");
 				addressPanel.add(lblBtcAddress);
-				JTextPane dfield_Address = getDField(_getAddress_View());
+				JTextField dfield_Address = getDField(_getAddress_View());
 				addressPanel.add(dfield_Address);
-				JButton btnCopyBtcAddress = new JButton("Copy");
+				JButton btnCopyBtcAddress = getButton("Copy");
 				btnCopyBtcAddress.addActionListener(new ActionListener() {
 					@Override
 					public void actionPerformed(ActionEvent e) {
@@ -903,10 +974,10 @@ public class CoinCloudUploader extends JFrame {
 			contentPanel.add(privateKeyWIFPanel);
 				JLabel lblPrivateKeywif = new JLabel("Private Key(WIF): ");
 				privateKeyWIFPanel.add(lblPrivateKeywif);
-				JTextPane dfield_PrivateKeyWIF = getDField(_getPrivateKeyWIF_View());
+				JTextField dfield_PrivateKeyWIF = getDField(_getPrivateKeyWIF_View());
 				privateKeyWIFPanel.add(dfield_PrivateKeyWIF);
 				
-				JButton btnCopyPrivateKeyWIF = new JButton("Copy");
+				JButton btnCopyPrivateKeyWIF = getButton("Copy");
 				btnCopyPrivateKeyWIF.addActionListener(new ActionListener() {
 					@Override
 					public void actionPerformed(ActionEvent e) {
@@ -925,9 +996,9 @@ public class CoinCloudUploader extends JFrame {
 			contentPanel.add(privateKeyHexPanel);
 				JLabel lblPrivateKeyhex = new JLabel("Private Key(hex): ");
 				privateKeyHexPanel.add(lblPrivateKeyhex);
-				JTextPane dfield_PrivateKeyHex = getDField(_getPrivateKeyHex_View());
+				JTextField dfield_PrivateKeyHex = getDField(_getPrivateKeyHex_View());
 				privateKeyHexPanel.add(dfield_PrivateKeyHex);
-				JButton btnCopyPrivateKeyHex = new JButton("Copy");
+				JButton btnCopyPrivateKeyHex = getButton("Copy");
 				btnCopyPrivateKeyHex.addActionListener(new ActionListener() {
 					@Override
 					public void actionPerformed(ActionEvent e) {
@@ -946,9 +1017,9 @@ public class CoinCloudUploader extends JFrame {
 			contentPanel.add(publicKeyHexPanel);
 				JLabel lblPublicKeyhex = new JLabel("Compressed public key(hex): ");
 				publicKeyHexPanel.add(lblPublicKeyhex);
-				JTextPane dfield_PublicKeyHex = getDField(_getPublicKeyHex_View());
+				JTextField dfield_PublicKeyHex = getDField(_getPublicKeyHex_View());
 				publicKeyHexPanel.add(dfield_PublicKeyHex);
-				JButton btnCopyPublicKeyHex = new JButton("Copy");
+				JButton btnCopyPublicKeyHex = getButton("Copy");
 				btnCopyPublicKeyHex.addActionListener(new ActionListener() {
 					@Override
 					public void actionPerformed(ActionEvent e) {
@@ -967,9 +1038,9 @@ public class CoinCloudUploader extends JFrame {
 			contentPanel.add(publicUnComKeyHexPanel);
 				JLabel lblPublicUnComKeyhex = new JLabel("Raw public key(hex): ");
 				publicUnComKeyHexPanel.add(lblPublicUnComKeyhex);
-				JTextPane dfield_PublicUnComKeyHex = getDField(_getUnComPublicKeyHex_View());
+				JTextField dfield_PublicUnComKeyHex = getDField(_getUnComPublicKeyHex_View());
 				publicUnComKeyHexPanel.add(dfield_PublicUnComKeyHex);
-				JButton btnCopyUnComPublicKeyHex = new JButton("Copy");
+				JButton btnCopyUnComPublicKeyHex = getButton("Copy");
 				btnCopyUnComPublicKeyHex.addActionListener(new ActionListener() {
 					@Override
 					public void actionPerformed(ActionEvent e) {
@@ -986,7 +1057,7 @@ public class CoinCloudUploader extends JFrame {
 			JPanel buttonPane = new JPanel();
 			buttonPane.setLayout(new FlowLayout(FlowLayout.RIGHT));
 			keyViewWindow.getContentPane().add(buttonPane, BorderLayout.SOUTH);
-				JButton ImportButton = new JButton("Import");
+				JButton ImportButton = getButton("Import");
 				ImportButton.addActionListener(new ActionListener() {
 					@Override
 					public void actionPerformed(ActionEvent e) {
@@ -995,7 +1066,7 @@ public class CoinCloudUploader extends JFrame {
 				});
 				buttonPane.add(ImportButton);
 				
-				JButton okButton = new JButton("OK");
+				JButton okButton = getButton("OK");
 				okButton.addActionListener(new ActionListener() {
 					@Override
 					public void actionPerformed(ActionEvent e) {
@@ -1063,7 +1134,7 @@ public class CoinCloudUploader extends JFrame {
 			JPanel buttonPane = new JPanel();
 			buttonPane.setLayout(new FlowLayout(FlowLayout.RIGHT));
 			keyImportWindow.getContentPane().add(buttonPane, BorderLayout.SOUTH);
-				JButton okButton = new JButton("OK");
+				JButton okButton = getButton("OK");
 				okButton.addActionListener(new ActionListener() {
 					@Override
 					public void actionPerformed(ActionEvent arg0) {
@@ -1123,7 +1194,7 @@ public class CoinCloudUploader extends JFrame {
 				});
 				buttonPane.add(okButton);
 				keyImportWindow.getRootPane().setDefaultButton(okButton);
-				JButton cancelButton = new JButton("Cancel");
+				JButton cancelButton = getButton("Cancel");
 				cancelButton.addActionListener(new ActionListener() {
 					@Override
 					public void actionPerformed(ActionEvent e) {
@@ -1135,21 +1206,25 @@ public class CoinCloudUploader extends JFrame {
 	
 //----------------------------------------------------------------------------------------------------------------------------------------
 	//enable/disable stuff
-	
-	public void setInputContainerEnabled(boolean enabled) {
-		_setAllEnabled(FileInputContainer, enabled);
-	}
-	public void setBTCPaymentContainerEnabled(boolean enabled) {
-		_setAllEnabled(BTCPaymentContainer, enabled);
-	}
-	public void setBTCAddressContainerEnabled(boolean enabled) {
-		_setAllEnabled(BTCAddressContainer, enabled);
-	}
-	public void setCraftContainerEnabled(boolean enabled) {
-		_setAllEnabled(CraftContainer, enabled);
-	}
-	public void setBroadcastContainerEnabled(boolean enabled) {
-		_setAllEnabled(BroadcastContainer, enabled);
+	public void setStageTo(JPanel stage) {
+		this.currentStage.setBorder(getStageBorder(false));
+		this.currentStage.setBackground(StageBackgroundColor);
+		this.currentStage.revalidate();
+		this.currentStage.repaint();
+		
+		this.currentStage = stage;
+		_setAllEnabled(FileInputContainer, false);
+		_setAllEnabled(BTCPaymentContainer, false);
+		_setAllEnabled(BTCAddressContainer, false);
+		_setAllEnabled(CraftContainer, false);
+		_setAllEnabled(BroadcastContainer, false);
+		
+		_setAllEnabled(stage, true);
+		stage.setBorder(getStageBorder(true));
+		stage.setBackground(CurrentStageBackgroundColor);
+		stage.revalidate();
+		stage.repaint();
+		stage.requestFocus();
 	}
 	private void _setAllEnabled(JPanel p, boolean enabled) {
 		Component[] coms = p.getComponents();
@@ -1218,23 +1293,42 @@ public class CoinCloudUploader extends JFrame {
 	//		Static/helper methods.
 
 //----------------------------------------------------------------------------------------------------------------------------------------
-
-	public static JTextPane getDField(String text) {
-		JTextPane dfield = new JTextPane();
+    //swing-stuff
+	public static JTextField getDField(String text) {
+		JTextField dfield = new JTextField();
 		dfield.setText(text);
 		dfield.setEditable(false);
-		dfield.setBackground(new Color(200, 200, 200));
-		dfield.setBorder(new LineBorder(new Color(180, 180, 180)));
+		dfield.setBackground(DFieldBackgroundColor);
+		dfield.setBorder(new LineBorder(DFieldBorderColor));
 		return dfield;
 	}
-
+	public JPanel getStageContainer() {
+		JPanel out = new JPanel();
+		out.setBorder(getStageBorder(false));
+		out.setBackground(StageBackgroundColor);
+		return out;
+	}
+	public static Border getStageBorder(boolean isCurrentStage) {
+		if(isCurrentStage)
+			return new LineBorder(CurrentStageBorderColor, 2, false);
+		else
+			return new LineBorder(StageBorderColor, 2, false);
+	}
+	public static JTextField getField(String defaultText) {
+		JTextField out = new JTextField(defaultText);
+		return out;
+	}
+	public static JButton getButton(String text) {
+		JButton out = new JButton(text);
+		return out;
+	}
 	private static Dimension getWindowDimension() {
 		return Toolkit.getDefaultToolkit().getScreenSize();
 	}
 	
 //----------------------------------------------------------------------------------------------------------------------------------------
 	//Internet stuff
-	public static final String prefix = "/unspent?active=";
+	public static final String BLOCKCHAIN_unspendTransactionPrefix = "/unspent?active=";
 
 	/**
 	 *[0]= transactionID (little endian) length=32
@@ -1246,12 +1340,12 @@ public class CoinCloudUploader extends JFrame {
 	public LinkedList<byte[][]> obtainAddressInformation(String address, boolean useTor, int network) throws IOException{
 		HttpURLConnection c;
 		if(useTor) {
-			URL blockchainINFO = new URL("https",BLOCKCHAIN_HostTor, prefix + address);
-			log("Connect to: " + "https://" + BLOCKCHAIN_HostTor + prefix + address + ".", INFO);
+			URL blockchainINFO = new URL("https",BLOCKCHAIN_HostTor, BLOCKCHAIN_unspendTransactionPrefix + address);
+			log("Connect to: " + "https://" + BLOCKCHAIN_HostTor + BLOCKCHAIN_unspendTransactionPrefix + address + ".", INFO);
 			c = (HttpURLConnection)blockchainINFO.openConnection(TORProxy);
 		}else {
-			URL blockchainINFO = new URL("https", network==MAINNET ? BLOCKCHAIN_Host : BLOCKCHAIN_TestNetHost, prefix + address);
-			log("Connect to: " + "https://" + (network==MAINNET ? BLOCKCHAIN_Host : BLOCKCHAIN_TestNetHost) + prefix + address + ".", INFO);
+			URL blockchainINFO = new URL("https", network==MAINNET ? BLOCKCHAIN_Host : BLOCKCHAIN_TestNetHost, BLOCKCHAIN_unspendTransactionPrefix + address);
+			log("Connect to: " + "https://" + (network==MAINNET ? BLOCKCHAIN_Host : BLOCKCHAIN_TestNetHost) + BLOCKCHAIN_unspendTransactionPrefix + address + ".", INFO);
 			c = (HttpURLConnection)blockchainINFO.openConnection();
 		}
 		c.connect();
@@ -1268,7 +1362,6 @@ public class CoinCloudUploader extends JFrame {
 			complete += line;
 		}
 		br.close();
-		System.out.println("Complete: " + complete);
 		log("Parsing data...", INFO);
 		LinkedList<byte[][]> out = new LinkedList<byte[][]>();
 		complete = complete.replace(" ", "");
@@ -1337,10 +1430,8 @@ public class CoinCloudUploader extends JFrame {
 		wr.close();
 
 		int responseCode = con.getResponseCode();
-		log("Sending 'POST' request to URL : " + host + pushPrefix, INFO);
-		log("Post parameters : " + data, INFO);
-		log("Response Code : " + responseCode,INFO);
-
+		log("Sending 'POST' request to URL: " + host + pushPrefix, INFO);
+		System.out.println("Transaction: " + convertToHex(transaction));
 		BufferedReader in = new BufferedReader( new InputStreamReader(con.getInputStream()));
 		String inputLine;
 		StringBuffer response = new StringBuffer();
@@ -1349,6 +1440,7 @@ public class CoinCloudUploader extends JFrame {
 			response.append(inputLine);
 		}
 		in.close();
+		System.out.println("response:_" + response);
 		return responseCode/100==2 && response.toString().equalsIgnoreCase("Transaction Submitted");
 	}
 	
@@ -1443,11 +1535,11 @@ public class CoinCloudUploader extends JFrame {
 		byte[] out = new byte[20+1+4];
 		byte[] dHashed = ripemd160(sha256(getRawCompressedPublicKey(pub)));
 		byte[] toBeChecksumed = new byte[dHashed.length+1];
-		toBeChecksumed[0] = network==MAINNET ? (byte)0x00 : (byte)0x6F;//main-net
+		toBeChecksumed[0] = network==MAINNET ? (byte)0x00 : (byte)0x6F;
 		for (int i = 0; i < dHashed.length; i++) 
 			toBeChecksumed[i+1] = dHashed[i];
 		byte[] checksum = sha256(sha256(toBeChecksumed));
-		out[0] = network==MAINNET ? (byte)0x00 : (byte)0x6F;//main-net
+		out[0] = network==MAINNET ? (byte)0x00 : (byte)0x6F;
 		for (int i = 0; i < dHashed.length; i++) 
 			out[i+1] = dHashed[i];
 		for (int i = 0; i < 4; i++)
@@ -1457,7 +1549,7 @@ public class CoinCloudUploader extends JFrame {
 	public static String createWIFPrivateKey(ECPrivateKey priv, int network) {
 		byte[] rawKey = priv.getS().toByteArray();
 		byte[] toBeHashed = new byte[1+32+1];
-		toBeHashed[0] = network==MAINNET ? (byte)0x80 : (byte)0xEF;//main-net
+		toBeHashed[0] = network==MAINNET ? (byte)0x80 : (byte)0xEF;
 		for (int i = 0; i < 32; i++)
 			toBeHashed[toBeHashed.length-2 -i] = rawKey[rawKey.length-1 - i];
 		toBeHashed[toBeHashed.length-1] = (byte)0x01;//Corresponds to compressed key
@@ -1486,7 +1578,7 @@ public class CoinCloudUploader extends JFrame {
 	}
 	public static boolean isKeyPair(ECKeyPair pair) throws NoSuchAlgorithmException {
 		try {
-			byte[] data = "This is an string, that is just there to generate random data and thats just it.".getBytes();
+			byte[] data = "This is an string, that is just there to generate random data and thats about it.".getBytes();
 			Signature sig = Signature.getInstance("SHA256withECDSA");
 			sig.initSign(pair.prk);
 			sig.update(data);
@@ -1537,7 +1629,10 @@ public class CoinCloudUploader extends JFrame {
 	        KeyPairGenerator keyGen = KeyPairGenerator.getInstance("EC");
 	        keyGen.initialize(new ECGenParameterSpec("secp256k1"), sr);
 	        KeyPair pair = keyGen.generateKeyPair();
-	        return new ECKeyPair((ECPublicKey) pair.getPublic(), (ECPrivateKey)pair.getPrivate());
+	        ECKeyPair ecPair = new ECKeyPair((ECPublicKey) pair.getPublic(), (ECPrivateKey)pair.getPrivate());
+	        if(!isKeyPair(ecPair))//ensure they work
+	        	return null;
+	        return ecPair;
 		} catch (NoSuchAlgorithmException | InvalidAlgorithmParameterException e) {
 			return null;
 		}
@@ -1659,11 +1754,12 @@ public class CoinCloudUploader extends JFrame {
 	}
 	private static String switchEndianess(String in) {//switches from big to little and from little to big
 		String out = "";
+		String use = in;
 		int length = in.length();
 		if(length % 2 != 0)
-			throw new IllegalArgumentException();
+			use = "0"+use;;
 		for (int i = 0; i < length; i = i+2)
-			out = in.substring(i, i+2)+out;
+			out = use.substring(i, i+2)+out;
 		return out;
 	}
 	
