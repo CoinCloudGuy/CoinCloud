@@ -159,7 +159,7 @@ public class CoinCloudUploader extends JFrame {
 	//network constants
 	public static final int TESTNET = 1;
 	public static final int MAINNET = 0;
-	public static int BLOCKCHAIN_Network = TESTNET;
+	public static int BLOCKCHAIN_Network = MAINNET;
 	public static final String BLOCKCHAIN_Host = "blockchain.info";
 	public static final String BLOCKCHAIN_TestNetHost = "testnet.blockchain.info";
 	public static final String BLOCKCHAIN_HostTor = "blockchainbdgpzk.onion";
