@@ -28,7 +28,7 @@ In the fourth stage, you just have to press the `Craft transaction`-button and t
 **Note**: Once the transaction is crafted, it can always be seen by clicking the `View transaction...`-button.
 
 ---
-In the fifth stage, your transaction just needs to be broadcasted to the entire Bitcoin network, this is done by simply clicking the `Broadcast`-button. The program will now, using blockchain.infos 'pushtx'-feature, broadcast your transaction to the network. Should you want this connection to go through Tor, you can check the `Use Tor`-check box and an connection to the hidden service of blockchain.info through Tor will be made instead. You may be seeing a warning show up in the information panel(if your crafted transaction size happens to be greater than 74312), notifying you of an `minor server error`. This, however, is no big deal and can be ignored.
+In the fifth stage, your transaction just needs to be broadcasted to the entire Bitcoin network, this is done by simply clicking the `Broadcast`-button. The program will now, using blockchain.infos 'pushtx'-feature, broadcast your transaction to the network. Should you want this connection to go through Tor, you can check the `Use Tor`-check box and an connection to the hidden service of blockchain.info through Tor will be made instead. You may be seeing a warning show up in the information panel(if your crafted transaction size happens to be greater than 74,312), notifying you of an `minor server error`. This, however, is no big deal and can be ignored.
 
 **Note**(again): If you want to connect through Tor, you'll need to have an Tor-proxy or the Tor Browser Bundle running (doesn't matter which website, if any, you have open there, the Tor browser just needs to be running).
 
