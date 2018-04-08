@@ -72,7 +72,7 @@ public class CoinCloudDownloader extends JFrame {
 	public static final String version = "0.0.6-Beta";
 	public static final String name = "CoinCloudDownloader";
 	
-	public static final String BLOCKCHAIN_Host = "testnet.blockchain.info";
+	public static final String BLOCKCHAIN_Host = "blockchain.info";
 	public static final String BLOCKCHAIN_HostTor = "blockchainbdgpzk.onion";
 	public static final Proxy TORProxy = new Proxy(Proxy.Type.SOCKS, new InetSocketAddress("127.0.0.1", 9150));
 	public static final String TORProxyString = "127.0.0.1:9150";
