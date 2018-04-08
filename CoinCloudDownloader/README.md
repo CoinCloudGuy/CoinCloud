@@ -29,6 +29,6 @@ The address and the script-public-key are not one and the same! Do not try to en
 
 How that could look like is (transaction in raw hex format): 
 
-`[Version]+[Input scripts...]+[Output script length]+[amount of satoshi]+00000000000019+76a914+[20 Bytes of data]+88ac+[amount of satishi#2]+...`
+`[Version]+[Input scripts...]+[Output script length]+[amount of satoshi]+19+76a914+[20 Bytes of data]+88ac+[amount of satishi#2]+...`
 
 For more info on that, see the [bitcoinwiki](https://en.bitcoin.it/wiki/Transaction).
