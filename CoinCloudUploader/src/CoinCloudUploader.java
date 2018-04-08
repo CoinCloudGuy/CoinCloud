@@ -116,7 +116,7 @@ public class CoinCloudUploader extends JFrame {
 	//general constants
 	public static final int MAX_ARRAY_LENGTH = Integer.MAX_VALUE-2;//also last (valid) array index
 	//program constants
-	public static final String version = "0.0.4-Beta";
+	public static final String version = "0.0.5-Beta";
 	public static final String name = "CoinCloudUploader";
 	public static final int ERROR = 0;
 	public static final int INFO = 1;
@@ -183,6 +183,7 @@ public class CoinCloudUploader extends JFrame {
 	private JTextField field_PricePerAddress;
 	private JTextPane infoBox;
 	private JCheckBox chckbxUseTorCheck;
+	private JCheckBox chckbxAddChecksumAddress;
 	private JCheckBox chckbxUseTorBroadcast;
 	private JButton btnViewKeys;
 	private JButton btnViewTransaction;
@@ -213,9 +214,6 @@ public class CoinCloudUploader extends JFrame {
 	private JRadioButton rdbtnMbtc;
 	private JRadioButton rdbtnBits;
 	private JRadioButton rdbtnSatoshi;
-	
-	//TODO
-	//find a way to encode the length into the transaction as well, without altering the file
 	
 	public static void main(String[] args) throws MalformedURLException, IOException{
 		EventQueue.invokeLater(new Runnable() {
@@ -325,10 +323,20 @@ public class CoinCloudUploader extends JFrame {
 				btnDefault_TransactionFee.addActionListener(_getBtnDefault_TransactionFeeActionListener());
 				BTCPaymentContainerRelay01.add(btnDefault_TransactionFee, BorderLayout.EAST);
 				
-				JButton btnNext_Payment = getButton("Next");
-				btnNext_Payment.addActionListener(_getBtnNext_PaymentActionListener());
-				BTCPaymentContainerRelay01.add(btnNext_Payment, BorderLayout.SOUTH);
+				JPanel BTCPaymentContainerRelay02 = new JPanel();
+				BTCPaymentContainerRelay02.setLayout(new BorderLayout(0,0));
+				BTCPaymentContainerRelay02.setOpaque(false);
 				
+					chckbxAddChecksumAddress = new JCheckBox("Include file size in transaction");
+					chckbxAddChecksumAddress.setOpaque(false);
+					chckbxAddChecksumAddress.setSelected(true);
+					BTCPaymentContainerRelay02.add(chckbxAddChecksumAddress, BorderLayout.NORTH);
+					
+					JButton btnNext_Payment = getButton("Next");
+					btnNext_Payment.addActionListener(_getBtnNext_PaymentActionListener());
+					BTCPaymentContainerRelay02.add(btnNext_Payment, BorderLayout.SOUTH);
+				
+				BTCPaymentContainerRelay01.add(BTCPaymentContainerRelay02, BorderLayout.SOUTH);
 		
 		actionsContainer.add(BTCPaymentContainer);
 
@@ -356,7 +364,7 @@ public class CoinCloudUploader extends JFrame {
 				spinner.addChangeListener(new ChangeListener() {
 					@Override
 					public void stateChanged(ChangeEvent arg0) {
-						calculatedEstamatedCost = estimateCost(fileContents.length, (Integer)spinner.getValue(), storedTransactionFee, storedSatoshiPerAddress);
+						calculatedEstamatedCost = estimateCost(fileContents.length, (Integer)spinner.getValue(), storedTransactionFee, storedSatoshiPerAddress, chckbxAddChecksumAddress.isSelected());
 						if(rdbtnBtc.isSelected()) {
 							if(calculatedEstamatedCost != -1)
 								dfield_CalculatedAmountToPay.setText(formatDouble(convertSatoshiToBTC(calculatedEstamatedCost)));
@@ -440,7 +448,7 @@ public class CoinCloudUploader extends JFrame {
 		
 		CraftContainer = getStageContainer();
 		CraftContainer.setLayout(new BorderLayout(0, 0));
-
+			
 			JButton btnCraftTransaction = getButton("Craft transaction");
 			btnCraftTransaction.addActionListener(_getBtnCraftTransactionActionListener());
 			CraftContainer.add(btnCraftTransaction, BorderLayout.NORTH);
@@ -766,7 +774,6 @@ public class CoinCloudUploader extends JFrame {
 						}
 					}
 				}
-				
 				//file is in memory, move on to next stage
 				log(fileContents.length + " Bytes of data have been loaded.", INFO);
 				setStageTo(BTCPaymentContainer);
@@ -778,6 +785,7 @@ public class CoinCloudUploader extends JFrame {
 			@Override
 			public void actionPerformed(ActionEvent e) {
 				//get Fee and satoshi per address
+				final boolean useChecksum = chckbxAddChecksumAddress.isSelected();
 				final String pricePerAddress = field_PricePerAddress.getText();
 				try {
 					storedSatoshiPerAddress = Long.parseLong(pricePerAddress);
@@ -806,7 +814,7 @@ public class CoinCloudUploader extends JFrame {
 					return;
 				}
 				
-				calculatedEstamatedCost = estimateCost(fileContents.length, 1, storedTransactionFee, storedSatoshiPerAddress);//1 is assumed
+				calculatedEstamatedCost = estimateCost(fileContents.length, 1, storedTransactionFee, storedSatoshiPerAddress, useChecksum);//1 is assumed
 				//create one-time use Bitcoin address.
 				ECKeyPair pair = generateKeyPair();
 				if(pair == null) {
@@ -847,6 +855,7 @@ public class CoinCloudUploader extends JFrame {
 					}
 				}
 				final String bitcoinAddress = createBitcoinAddress(addressPublicKey, BLOCKCHAIN_Network);
+				final boolean useChecksum = chckbxAddChecksumAddress.isSelected();
 				log("Receiving balance information...", INFO);
 				SwingWorker<LinkedList<byte[][]>, Void> worker = new SwingWorker<LinkedList<byte[][]>, Void>(){
 					
@@ -899,9 +908,9 @@ public class CoinCloudUploader extends JFrame {
 								}
 							}
 							
-							long realTransactionLength = calculateTransactionLength(fileContents.length, results.size());
+							long realTransactionLength = calculateTransactionLength(fileContents.length, results.size(), useChecksum);
 							calculatedExactCost = (long)Math.ceil(realTransactionLength*(storedTransactionFee/1000)) // '/1000' conversion from kB to byte
-									+ ((long)calculateAmountOfAddressesNeeded(fileContents.length))*storedSatoshiPerAddress;
+									+ ((long)calculateAmountOfAddressesNeeded(fileContents.length, useChecksum))*storedSatoshiPerAddress;
 							if(sumOfBTC>=calculatedExactCost) {
 								if(sumOfBTC == calculatedExactCost) {
 									log("The address has currently: " + sumOfBTC + " Satoshi. This is exactly the amount needed for this transaction.",INFO);
@@ -1001,23 +1010,24 @@ public class CoinCloudUploader extends JFrame {
 					}
 				}
 				log("Broadcasting " + craftedTransaction.length + " bytes of transaction...",  INFO);
-				SwingWorker<Boolean, Void> worker = new SwingWorker<Boolean, Void>(){
+				SwingWorker<Integer, Void> worker = new SwingWorker<Integer, Void>(){
 
 					@Override
-					protected Boolean doInBackground() throws Exception {
+					protected Integer doInBackground() throws Exception {
 						try {
-							boolean succsess = broadcastTransaction(craftedTransaction, useTor, BLOCKCHAIN_Network);
+							int succsess = broadcastTransaction(craftedTransaction, useTor, BLOCKCHAIN_Network);
 							return succsess;
 						} catch (IOException e2) {
 							log("An network error appeared, please try again later.", ERROR);
-							return false;
+							return BROADCAST_Failed;
 						}
 					}
 					
 					@Override
 					protected void done() {
 						try {
-							if(get().booleanValue()) {//=isSuccsessfull
+							int response = get().intValue();
+							if(response == BROADCAST_Succsess) {//=isSuccsessfull
 								log("The transaction has been successfully broadcasted to the bitcoin network. Note that it can take up to(or even longer than) 3 hours before your transaction gets confirmed.", INFO);
 								String transactionID = getTransactionID(craftedTransaction);
 								log("Your transaction ID is: " + transactionID, INFO);
@@ -1027,20 +1037,19 @@ public class CoinCloudUploader extends JFrame {
 								isBroadcastDone = true;
 								btnStartOver.setEnabled(true);
 								return;
-							}else {
-								if(craftedTransaction.length <= TXSIZE_AboveNoBroadcastPossible) {//still succeed in broadcasting
-									log("The transaction has been successfully broadcasted to the bitcoin network.", INFO);
-									log("However, an minor server error has been encountered, but this will not be an issue.", WARNING);
-									log("Note that it can take up to(or even longer than) 3 hours before your transaction gets confirmed.", INFO);
-									String transactionID = getTransactionID(craftedTransaction);
-									log("Your transaction ID is: " + transactionID, INFO);
-									log("Make sure your write that ID down, since it is really difficult to locate your file in the blockchain, should you forget this ID.", INFO);
-									log("You can check whether or not the transaction has been confirmed yet here: https://" + (BLOCKCHAIN_Network==MAINNET ? BLOCKCHAIN_Host: BLOCKCHAIN_TestNetHost) + "/tx/" + transactionID, INFO);
-									setStageTo(null);
-									isBroadcastDone = true;
-									btnStartOver.setEnabled(true);
-									return;
-								}
+							}else if(response == BROADCAST_SuccsessWithMinorError){
+								log("The transaction has been successfully broadcasted to the bitcoin network.", INFO);
+								log("However, an minor server error has been encountered, but this will not be an issue.", WARNING);
+								log("Note that it can take up to(or even longer than) 3 hours before your transaction gets confirmed.", INFO);
+								String transactionID = getTransactionID(craftedTransaction);
+								log("Your transaction ID is: " + transactionID, INFO);
+								log("Make sure your write that ID down, since it is really difficult to locate your file in the blockchain, should you forget this ID.", INFO);
+								log("You can check whether or not the transaction has been confirmed yet here: https://" + (BLOCKCHAIN_Network==MAINNET ? BLOCKCHAIN_Host: BLOCKCHAIN_TestNetHost) + "/tx/" + transactionID, INFO);
+								setStageTo(null);
+								isBroadcastDone = true;
+								btnStartOver.setEnabled(true);
+								return;
+							}else {//BROADCAST_Failed is the only other possible return value possible
 								log("The transaction could not be successfully broadcasted.", ERROR);
 								((JButton)e.getSource()).setEnabled(true);
 								btnStartOver.setEnabled(true);
@@ -1065,19 +1074,21 @@ public class CoinCloudUploader extends JFrame {
 		return new ActionListener() {
 			@Override
 			public void actionPerformed(ActionEvent e) {
+				final boolean UseChecksumAddress = chckbxAddChecksumAddress.isSelected();
+				
 				final byte[] version = new byte[] {1,0,0,0};//0x01 in little endian
 				final byte[] numOfInputsVarInt = convertToBytes(getVarIntFromLong(unspendOutputs.size()));
 				byte[] preInput = appendBytes(new byte[][] {version, numOfInputsVarInt});
 				//inputs computed later
-				int amoutofAddresses = calculateAmountOfAddressesNeeded(fileContents.length);
+				int amoutofAddresses = calculateAmountOfAddressesNeeded(fileContents.length, false);// useChecksum=false because this will be added in manually later in the code
 				byte[][] outputData = new byte[amoutofAddresses][20];//20 byte packets, init value for java arrays is null (or rather 0x00 for bytes) for each element
 				for (int i = 0; i < fileContents.length; i++) {
 					outputData[i/20][i%20] = fileContents[i];
 				}
-				
+				final byte amountOfPaddingBytes = (byte)( (20 - (fileContents.length%20))%20 );//fileContents.length%20=number of content-bytes in the last address
 				//insert all outputs
 				byte[] postInput;//store result here
-				byte[] numOfOutputsVarInt = convertToBytes(getVarIntFromLong(outputData.length));
+				byte[] numOfOutputsVarInt = convertToBytes(getVarIntFromLong(outputData.length + (UseChecksumAddress?1:0)));
 				postInput = numOfOutputsVarInt;
 				final byte[] outScriptPrefix = convertToBytes("76a914");//doesn't change for constant length of 20 bytes 
 				final byte[] outScriptPostfix = convertToBytes("88ac");//doesn't change 
@@ -1087,7 +1098,17 @@ public class CoinCloudUploader extends JFrame {
 					byte[] scriptLengthVarInt = convertToBytes(getVarIntFromLong(script.length));
 					postInput = appendBytes(new byte[][] {postInput, costPerAddress, scriptLengthVarInt, script});
 				}
-				outputData = new byte[][] {};//empty the outputData array since its not needed anymore and basically contains the file.
+				
+				//append the checksum address if enabled
+				if(UseChecksumAddress) {
+					//the checksum address is the first 19 bytes of the sha256 hash of the file contents(including the needed padding bytes) and one byte containing the number of padding bytes, that are used, in the previous address. This number must be in between and including 0 and 19 in order to be valid
+					byte[] sha256_File = sha256(Arrays.copyOf(fileContents, outputData.length*20));
+					byte[] cksumScript = appendBytes(new byte[][] {outScriptPrefix, Arrays.copyOf(sha256_File, 19), new byte[] {amountOfPaddingBytes}, outScriptPostfix});
+					byte[] cksumscriptLengthVarInt = convertToBytes(getVarIntFromLong(cksumScript.length));
+					postInput = appendBytes(new byte[][] {postInput, costPerAddress, cksumscriptLengthVarInt, cksumScript});
+				}
+
+				outputData = new byte[][] {};//empty the outputData array since its not needed anymore and basically contains the file (clean memory).
 				byte[] lockTime = new byte[] {0,0,0,0};//as soon as possible (not locked)
 				postInput = appendBytes(new byte[][] {postInput, lockTime});
 				
@@ -1623,6 +1644,7 @@ public class CoinCloudUploader extends JFrame {
 				logEmptyLine();
 				log("Nice, now that the file is loaded, you need to choose how much money will be given to each address that gets generated in the upload process. Be careful what you choose, because if this value is less than " + PRICE_PER_ADDRESS_default + ", the transaction will be considered spam in the Bitcoin-network and as such, could be rejected.", INSTRUCTION);
 				log("You also need to choose how large the transaction fee should be. This is the money, that will be given to the miner, that is resposible for mining your transaction. So choose an higher transaction fee, if you want your transaction to be processed in less time.", INSTRUCTION);
+				log("Then you'll need to decide, whether or not to include the file size in the crafted transaction, beacuse some files cannot be altered in their size(for example encrypted files), while others can(for example .jpg images). If you are unsure, whether or not you need to include the file size, just leave the 'Include file size in transaction'-check box checked and continue.", INSTRUCTION);
 				log("If you have chosen these values, press 'Next' to get to stage 3.", INSTRUCTION);
 			}else if(stage == BTCAddressContainer) {
 				logEmptyLine();
@@ -1873,8 +1895,12 @@ public class CoinCloudUploader extends JFrame {
 		return out;
 	}
 	public static final String pushPrefix = "/pushtx";
+	public static final int BROADCAST_Succsess = 0;
+	public static final int BROADCAST_SuccsessWithMinorError = 1;
+	public static final int BROADCAST_Failed = 2;
+	
 	//true if and only if the transaction has been successfully broadcasted!
-	public boolean broadcastTransaction(byte[] transaction, boolean useTor, int network) throws IOException {
+	public int broadcastTransaction(byte[] transaction, boolean useTor, int network) throws IOException {
 		String host = useTor ? BLOCKCHAIN_HostTor : (network == MAINNET ? BLOCKCHAIN_Host : BLOCKCHAIN_TestNetHost);
 		HttpURLConnection con;
 		if(useTor)
@@ -1910,10 +1936,21 @@ public class CoinCloudUploader extends JFrame {
 		}
 		in.close();
 		if(responseCode/100==2 && response.toString().equalsIgnoreCase("Transaction Submitted")) {
-			return true;
+			return BROADCAST_Succsess;
 		}else {
-			log("The transaction broadcast failed(response code: \"" + responseCode + "\"), due to rejection of the transaction. Reason/Error message:\"" + response.toString() + "\".", ERROR);
-			return false;
+			//check if the transaction made it nonetheless
+			HttpURLConnection chckCon = (HttpURLConnection)new URL("https", host, "/rawtx/" + getTransactionID(transaction)).openConnection();
+			chckCon.setRequestMethod("HEAD");
+			chckCon.connect();
+			int code = chckCon.getResponseCode();
+			chckCon.disconnect();
+			if(code/100==2) {
+				//did still broadcast
+				return BROADCAST_SuccsessWithMinorError;
+			}else {
+				log("The transaction broadcast failed(response code: \"" + responseCode + "\"), due to rejection of the transaction. Reason/Error message:\"" + response.toString() + "\".", ERROR);
+				return BROADCAST_Failed;
+			}
 		}
 	}
 	
@@ -1957,10 +1994,10 @@ public class CoinCloudUploader extends JFrame {
 //----------------------------------------------------------------------------------------------------------------------------------------
 	//length calculation stuff
 	
-	public static long estimateCost(int fileLength, int numberOfInputs, double fee, long satoshiPerAddress) {
-		int transactionlength = calculateTransactionLength(fileLength, numberOfInputs);
+	public static long estimateCost(int fileLength, int numberOfInputs, double fee, long satoshiPerAddress, boolean useChecksum) {
+		int transactionlength = calculateTransactionLength(fileLength, numberOfInputs, useChecksum);
 		return (long)Math.ceil(transactionlength*(fee/1000)) // '/1000' conversion from kB to byte
-						+ ((long)calculateAmountOfAddressesNeeded(fileLength))*satoshiPerAddress;
+						+ ((long)calculateAmountOfAddressesNeeded(fileLength, useChecksum))*satoshiPerAddress;
 	}
 	
 	private static final int versionlength = 4;
@@ -1971,9 +2008,9 @@ public class CoinCloudUploader extends JFrame {
 	private static final int outValueLength = 8;
 	private static final int standartOutPubScriptlength = 25;
 	private static final int lockTimeLength = 4;
-	public static int calculateTransactionLength(int amountOfBytes, int amountOfInputs) {
+	public static int calculateTransactionLength(int amountOfBytes, int amountOfInputs, boolean useChecksum) {
 		final int VarIntNumOfTxInLength = getVarIntFromLong(amountOfInputs).length()/2;// '/2' because hex string
-		int amountOfAddressesNeeded = calculateAmountOfAddressesNeeded(amountOfBytes);
+		int amountOfAddressesNeeded = calculateAmountOfAddressesNeeded(amountOfBytes, useChecksum);
 		final int VarIntNumOfTxOutLength = getVarIntFromLong(amountOfAddressesNeeded).length()/2;// '/2' because hex string
 		final int VarIntLengthOutScriptLength = getVarIntFromLong(standartOutPubScriptlength).length()/2;// '/2' because hex string
 		return versionlength 
@@ -1987,8 +2024,8 @@ public class CoinCloudUploader extends JFrame {
 	public static int calculateInputLength() {
 		return TxOutHashLength + TxOutIndexLength + standartInputScriptlength + sequenceLength;
 	}
-	public static int calculateAmountOfAddressesNeeded(int amountOfBytes) {
-		return (amountOfBytes/20)+1;//split in 20 byte intervals and the last one padded with null bytes, therefore divide by 20 and ceil(or add 1 because integer) the result.
+	public static int calculateAmountOfAddressesNeeded(int amountOfBytes, boolean useChecksum) {
+		return (useChecksum?1:0) + ((amountOfBytes-1)/20)+1;//split in 20 byte intervals and the last one padded with null bytes, therefore divide by 20 and ceil(or add 1 because integer) the result.
 	}
 	
 //----------------------------------------------------------------------------------------------------------------------------------------
