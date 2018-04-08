@@ -17,9 +17,12 @@ import java.net.InetSocketAddress;
 import java.net.Proxy;
 import java.net.URL;
 import java.net.URLConnection;
+import java.security.MessageDigest;
+import java.security.NoSuchAlgorithmException;
 import java.text.DateFormat;
 import java.text.SimpleDateFormat;
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.Date;
 import java.util.List;
 
@@ -28,6 +31,7 @@ import javax.swing.JCheckBox;
 import javax.swing.JFileChooser;
 import javax.swing.JFrame;
 import javax.swing.JLabel;
+import javax.swing.JOptionPane;
 import javax.swing.JPanel;
 import javax.swing.JScrollPane;
 import javax.swing.JTextField;
@@ -65,10 +69,10 @@ public class CoinCloudDownloader extends JFrame {
 	public static final Color INFOColor = new Color(0, 0, 0);
 	public static final Color WARNINGColor = new Color(155, 155, 0);
 	public static final Color POINTYColor = new Color(0, 255, 0);
-	public static final String version = "0.0.5-Beta";
+	public static final String version = "0.0.6-Beta";
 	public static final String name = "CoinCloudDownloader";
 	
-	public static final String BLOCKCHAIN_Host = "blockchain.info";
+	public static final String BLOCKCHAIN_Host = "testnet.blockchain.info";
 	public static final String BLOCKCHAIN_HostTor = "blockchainbdgpzk.onion";
 	public static final Proxy TORProxy = new Proxy(Proxy.Type.SOCKS, new InetSocketAddress("127.0.0.1", 9150));
 	public static final String TORProxyString = "127.0.0.1:9150";
@@ -76,6 +80,10 @@ public class CoinCloudDownloader extends JFrame {
 	public static void main(String[] args) {
 		EventQueue.invokeLater(new Runnable() {
 			public void run() {
+				if(!isSHA256AlgorithmWorking()) {
+					JOptionPane.showMessageDialog(null, "Your operating system does not supply the \"SHA-256\"-hashing algorithm. This, however, is required for this program. There is most likely nothing that can be done about this. Sorry!", "Error: Missing algorithms", JOptionPane.ERROR_MESSAGE);
+					return;
+				}
 				//check for an running tor proxy
 				canUseTor = isTorProxyAvailable();
 				try {
@@ -217,6 +225,29 @@ public class CoinCloudDownloader extends JFrame {
 						for (int i = 0; i < out.length; i++) {
 							out[i] = b.get(i);
 						}
+
+						//detect checksum and adjust 'out' start
+						//'checksum' means that the last transaction (the last 20 bytes of the byte[]) consists of the first 19 bytes of the sha256 hash of all bytes except the last 20 bytes and(as last byte) the amount of padding bytes used in the encoding(must be somewhere in the range of 0-19 (both inclusive)).
+						if (out.length > 20) {
+							byte[] data = Arrays.copyOf(out, out.length - 20);
+							byte[] checksum = Arrays.copyOfRange(out, out.length - 20, out.length);
+							byte[] sha256_data = sha256(data);
+							boolean isCheckSumEqual = true;
+							//check if the first 19 bytes are equal
+							for (int i = 0; i < 19; i++) {
+								if (checksum[i] != sha256_data[i]) {
+									isCheckSumEqual = false;
+									break;
+								}
+							}
+							//checksum[19] is the amount of padding bytes that where used., if the checksum is equal, since that indicates, that the last 20 bytes are not actual data and have added on crafting of the transaction to signal the padding length will be there
+							if (isCheckSumEqual) {
+								if (!(checksum[19] < 0 || checksum[19] > 19))
+									out = Arrays.copyOf(data, data.length - checksum[19]);
+							} //else: continue normally, there seems not to be an checksum, which means that there is also not an numberOfPadding bytes appended
+						}
+						//detect checksum and adjust 'out' end
+						
 						try {
 							fos.write(out);
 							fos.close();
@@ -270,7 +301,7 @@ public class CoinCloudDownloader extends JFrame {
 				(winDim.height-getHeight())/2); //center y
 		setMinimumSize(getSize());
 	}
-
+	
 	public static void putToBytes(String s, List<Byte> l) {
 		for(int i = 0;i< s.length()/2;i++) {
 			int b = (Integer.parseInt(s.substring(2*i, (2*i)+2),16) & 0xff);
@@ -381,6 +412,29 @@ public class CoinCloudDownloader extends JFrame {
 	        textPane.replaceSelection(msg);
 	        textPane.setEditable(false);
     }
+    
+	public static boolean isSHA256AlgorithmWorking() {
+		try {
+            MessageDigest md = MessageDigest.getInstance("SHA-256");
+            md.update("Random test data.".getBytes());
+            md.digest();
+			return true;
+		} catch (NoSuchAlgorithmException e) {
+			return false;
+		}
+	}
+	
+  	private static byte[] sha256(byte[] data) {
+        try {
+            MessageDigest md = MessageDigest.getInstance("SHA-256");
+            md.update(data);
+            return md.digest();
+        } catch (NoSuchAlgorithmException e) { 
+			System.err.println("NoSuchAlgorithmException, this should be impossible!");
+			e.printStackTrace();
+          return null;
+        }
+    }	
     
 	private static boolean isTorProxyAvailable() {
 		try {
