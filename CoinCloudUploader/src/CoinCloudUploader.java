@@ -116,7 +116,7 @@ public class CoinCloudUploader extends JFrame {
 	//general constants
 	public static final int MAX_ARRAY_LENGTH = Integer.MAX_VALUE-2;//also last (valid) array index
 	//program constants
-	public static final String version = "0.0.5-Beta";
+	public static final String version = "0.0.5";
 	public static final String name = "CoinCloudUploader";
 	public static final int ERROR = 0;
 	public static final int INFO = 1;

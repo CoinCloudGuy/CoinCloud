@@ -69,7 +69,7 @@ public class CoinCloudDownloader extends JFrame {
 	public static final Color INFOColor = new Color(0, 0, 0);
 	public static final Color WARNINGColor = new Color(155, 155, 0);
 	public static final Color POINTYColor = new Color(0, 255, 0);
-	public static final String version = "0.0.6-Beta";
+	public static final String version = "0.0.6";
 	public static final String name = "CoinCloudDownloader";
 	
 	public static final String BLOCKCHAIN_Host = "blockchain.info";
