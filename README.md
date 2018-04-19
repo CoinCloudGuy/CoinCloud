@@ -5,7 +5,7 @@ CoinCloud is a set of two programs, called the CoinCloudUploader and the CoinClo
 ## Where do I get these programs?
 Above this text you'll see two folders, one called `CoinCloudDownloader` and one called `CoinCloudUploader`. In there you'll find specific instructions on how to install and use the respective program, as well as their source code. If you want to get the program from another place, it can be found here:
 1.  [Github](https://github.com/CoinCloudGuy/CoinCloud) - https://github.com/CoinCloudGuy/CoinCloud
-2.  [Gitgut](https://gitgud.io/CoinCloudGuy/CoinCloud) - https://gitgud.io/CoinCloudGuy/CoinCloud
+2.  [Gitgud](https://gitgud.io/CoinCloudGuy/CoinCloud) - https://gitgud.io/CoinCloudGuy/CoinCloud
 3.  [Git Center](http://127.0.0.1:43110/126KYGEVcPaw9u7NKA6ZxqBUgFjGxqpF15) (requires [Zeronet](https://zeronet.io/)) - http://127.0.0.1:43110/126KYGEVcPaw9u7NKA6ZxqBUgFjGxqpF15
 
 ### How do I compile from source code?
