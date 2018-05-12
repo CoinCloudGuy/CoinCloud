@@ -3,7 +3,9 @@
 CoinCloud is a set of two programs, called the CoinCloudUploader and the CoinCloudDownloader, which allow you to upload to and retrieve files from the Bitcoin-blockchain. Both are free and open source, so if you think that this is a scam(which is fair, to be honest), you can check the source code or, if you don't know how to program, ask a friend that does and should you distrust the precompiled executable jar files, I provided, you can also compile the source code yourself. See below for details on that.
 
 ## Where do I get these programs?
-Above this text you'll see two folders, one called `CoinCloudDownloader` and one called `CoinCloudUploader`. In there you'll find specific instructions on how to install and use the respective program, as well as their source code. If you want to get the program from another place, it can be found here:
+Above this text you'll see two folders, one called `CoinCloudDownloader` and one called `CoinCloudUploader`. In there you'll find specific instructions on how to install and use the respective program, as well as their source code. You can also get both programs, as well as their source code by downloading `CoinCloudBundle.zip`. Alternatively you can also download `CoinCloudBundle.png`, which provides instructions on how to use both programs and also has them and their source code embedded inside it, in the [Cornelia-format](https://encyclopediadramatica.rs/Embedded_files#Cornelia_format)(the random colored pixels below the actual image). To extract the embedded files just follow the instructions in the pink box in the image.
+
+If you want to get the program from another place, it can be found here:
 1.  [Github](https://github.com/CoinCloudGuy/CoinCloud) - https://github.com/CoinCloudGuy/CoinCloud
 2.  [Gitgud](https://gitgud.io/CoinCloudGuy/CoinCloud) - https://gitgud.io/CoinCloudGuy/CoinCloud
 3.  [Git Center](http://127.0.0.1:43110/126KYGEVcPaw9u7NKA6ZxqBUgFjGxqpF15) (requires [Zeronet](https://zeronet.io/)) - http://127.0.0.1:43110/126KYGEVcPaw9u7NKA6ZxqBUgFjGxqpF15

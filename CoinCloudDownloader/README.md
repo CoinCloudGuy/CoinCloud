@@ -4,6 +4,8 @@ This is an program that lets you download files, that have been embedded into th
 ## Install.
 Go into the `Releases`-folder, than choose the folder with version that you want to download (`Newest Version` will always contain the most up-to-date version) and download the runnable jar-file named `CoinCloudDownloader {version} {state}(runnable).jar`. Once The download is complete, you only need to install the java `jre 8` (or higher).
 ## How to use?
+_The following text is also available as an image. See_ `CoinCloudBundle.png` _in the parent directory._
+
 Once you start the CoinCloud Downloader you'll see 2 fields.
 
 In the first field, you have to paste the transaction ID(in hexadecimal) of the transaction that contains the file you want to download.
